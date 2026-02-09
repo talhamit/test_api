@@ -8,9 +8,18 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import cors from 'cors';
 
+// const app = express();
+// app.use(express.json());
+// app.use(cors());
+
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+
 const app = express();
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
+
 
 // ------------------ CONFIG ------------------
 const JWT_SECRET = "SUPER_SECRET_KEY_CHANGE_ME";
@@ -161,5 +170,12 @@ app.get("/generate-large", async (req, res) => {
 
 // ------------------ SERVER ------------------
 //app.listen(5000, () => console.log("API running on port 5000"));
-const port = process.env.PORT || 5000;
-app.listen(port, () => console.log(`API running on port ${port}`));
+
+// const port = process.env.PORT || 5000;
+// app.listen(port, () => console.log(`API running on port ${port}`));
+
+const PORT = process.env.PORT || 10000;
+
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
