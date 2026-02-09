@@ -1,39 +1,36 @@
-// Professional REST API with JWT Authentication
-// Node.js + Express + MongoDB (Mongoose)
-// Includes: Login + Access Token, Users, Products, Orders, BlogPosts, Large Dataset
+import dotenv from "dotenv";
+import express from "express";
+import mongoose from "mongoose";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import cors from "cors";
 
-import express from 'express';
-import mongoose from 'mongoose';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import cors from 'cors';
-
-// const app = express();
-// app.use(express.json());
-// app.use(cors());
-
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-
 // ------------------ CONFIG ------------------
-const JWT_SECRET = "SUPER_SECRET_KEY_CHANGE_ME";
-const MONGO_URL = "YOUR_MONGO_URI"; // Replace when deploying
+const JWT_SECRET = process.env.JWT_SECRET || "SUPER_SECRET_KEY_CHANGE_ME";
+const MONGO_URL = process.env.MONGO_URL;
 
-mongoose.connect(MONGO_URL).then(() => console.log("Mongo Connected"));
+if (!MONGO_URL) {
+  console.error("❌ ERROR: MONGO_URL is missing in environment variables");
+  process.exit(1);
+}
+
+mongoose
+  .connect(MONGO_URL)
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch((err) => console.error("❌ MongoDB Error:", err));
 
 // ------------------ MODELS ------------------
-
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
   password: String,
-  role: { type: String, default: "user" }
+  role: { type: String, default: "user" },
 });
 
 const productSchema = new mongoose.Schema({
@@ -46,7 +43,7 @@ const orderSchema = new mongoose.Schema({
   userId: String,
   products: Array,
   total: Number,
-  status: { type: String, default: "pending" }
+  status: { type: String, default: "pending" },
 });
 
 const blogSchema = new mongoose.Schema({
@@ -61,29 +58,29 @@ const Order = mongoose.model("Order", orderSchema);
 const Blog = mongoose.model("Blog", blogSchema);
 
 // ------------------ AUTH MIDDLEWARE ------------------
-
 function auth(req, res, next) {
   const token = req.headers["authorization"]?.split(" ")[1];
   if (!token) return res.status(401).json({ message: "Access token required" });
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ message: "Invalid token" });
   }
 }
 
 // ------------------ AUTH ROUTES ------------------
-
 app.post("/auth/register", async (req, res) => {
   const { name, email, password } = req.body;
 
   const hashed = await bcrypt.hash(password, 10);
+
   try {
     const newUser = await User.create({ name, email, password: hashed });
     res.json({ message: "Registered", user: newUser });
-  } catch (e) {
+  } catch {
     res.status(400).json({ message: "Email already exists" });
   }
 });
@@ -91,6 +88,7 @@ app.post("/auth/register", async (req, res) => {
 app.post("/auth/login", async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
+
   if (!user) return res.status(404).json({ message: "User not found" });
 
   const valid = await bcrypt.compare(password, user.password);
@@ -100,8 +98,8 @@ app.post("/auth/login", async (req, res) => {
   res.json({ accessToken: token, user });
 });
 
-// ------------------ USERS CRUD ------------------
-app.get("/users", auth, async (req, res) => {
+// ------------------ CRUD ROUTES ------------------
+app.get("/users", auth, async (_, res) => {
   res.json(await User.find());
 });
 
@@ -110,12 +108,12 @@ app.delete("/users/:id", auth, async (req, res) => {
   res.json({ message: "User deleted" });
 });
 
-// ------------------ PRODUCTS CRUD ------------------
+// Products
 app.post("/products", auth, async (req, res) => {
   res.json(await Product.create(req.body));
 });
 
-app.get("/products", async (req, res) => {
+app.get("/products", async (_, res) => {
   res.json(await Product.find());
 });
 
@@ -128,12 +126,12 @@ app.delete("/products/:id", auth, async (req, res) => {
   res.json({ message: "Product deleted" });
 });
 
-// ------------------ ORDERS CRUD ------------------
+// Orders
 app.post("/orders", auth, async (req, res) => {
   res.json(await Order.create(req.body));
 });
 
-app.get("/orders", auth, async (req, res) => {
+app.get("/orders", auth, async (_, res) => {
   res.json(await Order.find());
 });
 
@@ -146,36 +144,28 @@ app.delete("/orders/:id", auth, async (req, res) => {
   res.json({ message: "Order deleted" });
 });
 
-// ------------------ BLOG CRUD ------------------
+// Blogs
 app.post("/blogs", auth, async (req, res) => {
   res.json(await Blog.create(req.body));
 });
 
-app.get("/blogs", async (req, res) => {
+app.get("/blogs", async (_, res) => {
   res.json(await Blog.find());
 });
 
-// ------------------ RANDOM LARGE DATASET ------------------
-app.get("/generate-large", async (req, res) => {
-  const list = [];
-  for (let i = 0; i < 20000; i++) {
-    list.push({
-      id: i,
-      name: `Item-${i}`,
-      price: Math.floor(Math.random() * 1000)
-    });
-  }
+// Large Dataset
+app.get("/generate-large", async (_, res) => {
+  const list = Array.from({ length: 20000 }).map((_, i) => ({
+    id: i,
+    name: `Item-${i}`,
+    price: Math.floor(Math.random() * 1000),
+  }));
   res.json(list);
 });
 
 // ------------------ SERVER ------------------
-//app.listen(5000, () => console.log("API running on port 5000"));
-
-// const port = process.env.PORT || 5000;
-// app.listen(port, () => console.log(`API running on port ${port}`));
-
 const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🚀 Server live on port ${PORT}`);
 });
