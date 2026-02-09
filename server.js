@@ -160,4 +160,6 @@ app.get("/generate-large", async (req, res) => {
 });
 
 // ------------------ SERVER ------------------
-app.listen(5000, () => console.log("API running on port 5000"));
+//app.listen(5000, () => console.log("API running on port 5000"));
+const port = process.env.PORT || 5000;
+app.listen(port, () => console.log(`API running on port ${port}`));
